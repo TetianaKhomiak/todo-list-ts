@@ -40,7 +40,7 @@ class ToDoList {
   render(): void {
     this.selectedHtmlElement.innerHTML = "";
     this.addPromptFormForAddingNotes();
-    this.addSearchNoteButton();
+    this.addSearchInput();
     this.addFilteringAndSortingButtons();
     this.addListWithNotes(this.notes);
     this.showStatistics();
@@ -52,10 +52,10 @@ class ToDoList {
     const button = document.createElement("button");
 
     titleInput.className = "add-note--title";
-    titleInput.placeholder = "Note Title (required)";
+    titleInput.placeholder = "Task Title (required)";
     contentInput.className = "add-note--content";
-    contentInput.placeholder = "Note Content (required)";
-    button.innerText = "Add Note";
+    contentInput.placeholder = "Task Content (required)";
+    button.innerText = "Add Task";
 
     button.addEventListener("click", () => {
       const title = titleInput.value;
@@ -68,6 +68,27 @@ class ToDoList {
     this.selectedHtmlElement.appendChild(titleInput);
     this.selectedHtmlElement.appendChild(contentInput);
     this.selectedHtmlElement.appendChild(button);
+  }
+
+  addSearchInput(): void {
+    const searchInput = document.createElement("input");
+    const searchButton = document.createElement("button");
+
+    searchInput.placeholder = "Search by title or content";
+    searchButton.innerText = "Search";
+
+    searchButton.addEventListener("click", () => {
+      const searchedText = searchInput.value.toLowerCase();
+      const foundNotes = this.notes.filter(
+        (note) =>
+          note.title.toLowerCase().includes(searchedText) ||
+          note.content.toLowerCase().includes(searchedText)
+      );
+      this.renderFilteredNotes(foundNotes);
+    });
+
+    this.selectedHtmlElement.appendChild(searchInput);
+    this.selectedHtmlElement.appendChild(searchButton);
   }
 
   addNoteToList(title: string, content: string): void {
@@ -160,49 +181,39 @@ class ToDoList {
     }
   }
 
-  addSearchNoteButton(): void {
-    const searchButton = document.createElement("button");
-    searchButton.innerText = "Search Note";
+  addFilteringAndSortingButtons(): void {
+    const filterButton = document.createElement("button");
+    const sortByDateButton = document.createElement("button");
+    const sortByStatusButton = document.createElement("button");
 
-    searchButton.addEventListener("click", () => {
-      const input =
-        document.querySelector<HTMLInputElement>(".add-note--title");
-      if (input) {
-        const searchedText = input.value.toLowerCase();
-        const foundNotes = this.notes.filter(
-          (note) =>
-            note.title.toLowerCase().includes(searchedText) ||
-            note.content.toLowerCase().includes(searchedText)
-        );
-        this.renderFilteredNotes(foundNotes);
-      }
+    filterButton.innerText = "Show All Notes";
+    sortByDateButton.innerText = "Sort Notes by Creation Date";
+    sortByStatusButton.innerText = "Sort Notes by Status";
+
+    filterButton.addEventListener("click", () => this.render());
+
+    sortByDateButton.addEventListener("click", () => {
+      this.notes.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      this.render();
     });
-    this.selectedHtmlElement.appendChild(searchButton);
+
+    sortByStatusButton.addEventListener("click", () => {
+      this.notes.sort((a, b) => Number(a.isCompleted) - Number(b.isCompleted));
+      this.render();
+    });
+
+    this.selectedHtmlElement.appendChild(filterButton);
+    this.selectedHtmlElement.appendChild(sortByDateButton);
+    this.selectedHtmlElement.appendChild(sortByStatusButton);
   }
 
   renderFilteredNotes(foundNotes: Note[]): void {
     this.selectedHtmlElement.innerHTML = "";
     this.addPromptFormForAddingNotes();
-    this.addSearchNoteButton();
+    this.addSearchInput();
+    this.addFilteringAndSortingButtons();
     this.addListWithNotes(foundNotes);
     this.showStatistics();
-  }
-
-  addFilteringAndSortingButtons(): void {
-    const filterButton = document.createElement("button");
-    const sortButton = document.createElement("button");
-
-    filterButton.innerText = "Show All Notes";
-    sortButton.innerText = "Sort Notes by Creation Date";
-
-    filterButton.addEventListener("click", () => this.render());
-    sortButton.addEventListener("click", () => {
-      this.notes.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-      this.render();
-    });
-
-    this.selectedHtmlElement.appendChild(filterButton);
-    this.selectedHtmlElement.appendChild(sortButton);
   }
 
   showStatistics(): void {
