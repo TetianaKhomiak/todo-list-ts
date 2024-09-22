@@ -1,13 +1,12 @@
 "use strict";
 class Note {
-    constructor(id, title, content, requiresConfirmation = false) {
+    constructor(id, title, content) {
         this.id = id;
         this.title = title;
         this.content = content;
         this.createdAt = new Date();
         this.updatedAt = new Date();
         this.isCompleted = false;
-        this.requiresConfirmation = requiresConfirmation;
     }
 }
 class ToDoList {
@@ -83,7 +82,12 @@ class ToDoList {
             removeButton.className = "delete-note-button";
             editButton.className = "edit-note-button";
             completeButton.className = "complete-note-button";
-            li.innerText = `${note.title}: ${note.content} (Created: ${note.createdAt.toLocaleString()})`;
+            const status = note.isCompleted ? "Completed" : "In Process";
+            let noteText = `${note.title}: ${note.content} (Created: ${note.createdAt.toLocaleString()})  ${status}`;
+            if (note.updatedAt.getTime() !== note.createdAt.getTime()) {
+                noteText = `${note.title}: ${note.content} (Created: ${note.createdAt.toLocaleString()}) Updated: ${note.updatedAt.toLocaleString()} ${status}`;
+            }
+            li.innerText = noteText;
             if (note.isCompleted) {
                 li.style.textDecoration = "line-through";
                 li.style.color = "green";
@@ -109,17 +113,21 @@ class ToDoList {
         const note = this.notes.find((note) => note.id === id);
         if (!note)
             return;
-        const title = prompt("Edit title:", note.title);
-        const content = prompt("Edit content:", note.content);
+        const confirmEditInitiation = confirm("Are you sure you want to edit this note?");
+        if (!confirmEditInitiation)
+            return;
+        const currentTitle = note.title;
+        const currentContent = note.content;
+        const title = prompt("Edit title:", currentTitle);
+        const content = prompt("Edit content:", currentContent);
         if (title !== null && content !== null) {
-            if (note.requiresConfirmation &&
-                !confirm("Are you sure you want to edit this note?")) {
-                return;
+            const confirmChanges = confirm(`Confirm changes?\nTitle: ${title}\nContent: ${content}`);
+            if (confirmChanges) {
+                note.title = title || currentTitle;
+                note.content = content || currentContent;
+                note.updatedAt = new Date();
+                this.render();
             }
-            note.title = title || note.title;
-            note.content = content || note.content;
-            note.updatedAt = new Date();
-            this.render();
         }
     }
     toggleNoteCompletion(id) {
