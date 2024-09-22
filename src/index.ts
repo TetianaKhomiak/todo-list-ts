@@ -1,6 +1,21 @@
-"use strict";
+interface INote {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isCompleted: boolean;
+}
 
-class Note {
+interface IToDoList {
+  addNoteToList(title: string, content: string): void;
+  removeNoteById(id: number): void;
+  editNoteById(id: number): void;
+  toggleNoteCompletion(id: number): void;
+  render(): void;
+}
+
+class Note implements INote {
   id: number;
   title: string;
   content: string;
@@ -18,44 +33,38 @@ class Note {
   }
 }
 
-class ToDoList {
-  notes: Note[];
+class ToDoListRenderer {
   selectedHtmlElement: HTMLElement;
-  nextId: number;
 
-  constructor(selectedHtmlElement?: HTMLElement) {
-    this.notes = [];
+  constructor(selectedHtmlElement: HTMLElement) {
     this.selectedHtmlElement = selectedHtmlElement || document.body;
-    this.nextId = 1;
-    this.render();
   }
 
-  render(): void {
+  clear(): void {
     this.selectedHtmlElement.innerHTML = "";
-    this.addPromptFormForAddingNotes();
-    this.addSearchInput();
-    this.addFilteringAndSortingButtons();
-    this.addListWithNotes(this.notes);
-    this.showStatistics();
   }
 
-  addPromptFormForAddingNotes(): void {
+  addFormForAddingNotes(
+    addNoteCallback: (title: string, content: string) => void
+  ): void {
     const titleInput = document.createElement("input");
     const contentInput = document.createElement("textarea");
     const button = document.createElement("button");
 
-    titleInput.className = "add-note--title";
-    titleInput.placeholder = "Task Title (required)";
-    contentInput.className = "add-note--content";
-    contentInput.placeholder = "Task Content (required)";
-    button.innerText = "Add Task";
+    titleInput.placeholder = "Note Title (required)";
+    contentInput.placeholder = "Note Content (required)";
+    button.innerText = "Add Note";
 
     button.addEventListener("click", () => {
       const title = titleInput.value;
       const content = contentInput.value;
-      this.addNoteToList(title, content);
-      titleInput.value = "";
-      contentInput.value = "";
+      if (title && content) {
+        addNoteCallback(title, content);
+        titleInput.value = "";
+        contentInput.value = "";
+      } else {
+        alert("Both title and content are required!");
+      }
     });
 
     this.selectedHtmlElement.appendChild(titleInput);
@@ -63,7 +72,7 @@ class ToDoList {
     this.selectedHtmlElement.appendChild(button);
   }
 
-  addSearchInput(): void {
+  addSearchInput(searchCallback: (searchText: string) => void): void {
     const searchInput = document.createElement("input");
     const searchButton = document.createElement("button");
 
@@ -71,41 +80,50 @@ class ToDoList {
     searchButton.innerText = "Search";
 
     searchButton.addEventListener("click", () => {
-      const searchedText = searchInput.value.toLowerCase();
-      const foundNotes = this.notes.filter(
-        (note) =>
-          note.title.toLowerCase().includes(searchedText) ||
-          note.content.toLowerCase().includes(searchedText)
-      );
-      this.renderFilteredNotes(foundNotes);
+      const searchedText = searchInput.value;
+      searchCallback(searchedText);
     });
 
     this.selectedHtmlElement.appendChild(searchInput);
     this.selectedHtmlElement.appendChild(searchButton);
   }
 
-  addNoteToList(title: string, content: string): void {
-    if (!title || !content) {
-      alert("Both title and content are required!");
-      return;
-    }
+  addFilteringAndSortingButtons(
+    renderCallback: () => void,
+    sortByDateCallback: () => void,
+    sortByStatusCallback: () => void
+  ): void {
+    const filterButton = document.createElement("button");
+    const sortByDateButton = document.createElement("button");
+    const sortByStatusButton = document.createElement("button");
 
-    const newNote = new Note(this.nextId++, title, content);
-    this.notes.push(newNote);
-    this.render();
+    filterButton.innerText = "Show All Notes";
+    sortByDateButton.innerText = "Sort Notes by Creation Date";
+    sortByStatusButton.innerText = "Sort Notes by Status";
+
+    filterButton.addEventListener("click", () => renderCallback());
+    sortByDateButton.addEventListener("click", () => sortByDateCallback());
+    sortByStatusButton.addEventListener("click", () => sortByStatusCallback());
+
+    this.selectedHtmlElement.appendChild(filterButton);
+    this.selectedHtmlElement.appendChild(sortByDateButton);
+    this.selectedHtmlElement.appendChild(sortByStatusButton);
   }
 
-  addListWithNotes(chosenNoteArray: Note[]): void {
+  addListWithNotes(
+    notes: INote[],
+    removeNoteCallback: (id: number) => void,
+    editNoteCallback: (id: number) => void,
+    toggleNoteCompletionCallback: (id: number) => void
+  ): void {
     const ul = document.createElement("ul");
     ul.className = "note-list";
-    chosenNoteArray.forEach((note) => {
+
+    notes.forEach((note) => {
       const li = document.createElement("li");
       const removeButton = document.createElement("div");
       const editButton = document.createElement("div");
       const completeButton = document.createElement("div");
-      const removeIcon = document.createTextNode("\u00D7");
-      const editIcon = document.createTextNode("\u270E");
-      const completeIcon = document.createTextNode("\u2713");
 
       li.classList.add("note");
       removeButton.className = "delete-note-button";
@@ -115,14 +133,12 @@ class ToDoList {
       const status = note.isCompleted ? "Completed" : "In Process";
       let noteText = `${note.title}: ${
         note.content
-      } (Created: ${note.createdAt.toLocaleString()})  ${status}`;
-
+      } (Created: ${note.createdAt.toLocaleString()}) ${status}`;
       if (note.updatedAt.getTime() !== note.createdAt.getTime()) {
         noteText = `${note.title}: ${
           note.content
         } (Created: ${note.createdAt.toLocaleString()}) Updated: ${note.updatedAt.toLocaleString()} ${status}`;
       }
-
       li.innerText = noteText;
 
       if (note.isCompleted) {
@@ -130,16 +146,18 @@ class ToDoList {
         li.style.color = "green";
       }
 
+      const removeIcon = document.createTextNode("\u00D7");
+      const editIcon = document.createTextNode("\u270E");
+      const completeIcon = document.createTextNode("\u2713");
+
       removeButton.appendChild(removeIcon);
       editButton.appendChild(editIcon);
       completeButton.appendChild(completeIcon);
 
-      removeButton.addEventListener("click", () =>
-        this.removeNoteById(note.id)
-      );
-      editButton.addEventListener("click", () => this.editNoteById(note.id));
+      removeButton.addEventListener("click", () => removeNoteCallback(note.id));
+      editButton.addEventListener("click", () => editNoteCallback(note.id));
       completeButton.addEventListener("click", () =>
-        this.toggleNoteCompletion(note.id)
+        toggleNoteCompletionCallback(note.id)
       );
 
       li.appendChild(removeButton);
@@ -147,7 +165,69 @@ class ToDoList {
       li.appendChild(completeButton);
       ul.appendChild(li);
     });
+
     this.selectedHtmlElement.appendChild(ul);
+  }
+
+  showStatistics(totalNotes: number, remainingNotes: number): void {
+    const stats = document.createElement("div");
+    stats.innerText = `Total Notes: ${totalNotes}, In Process: ${remainingNotes}`;
+    this.selectedHtmlElement.appendChild(stats);
+  }
+}
+
+class NoteFilterAndSorter {
+  static filterNotes(notes: INote[], searchText: string): INote[] {
+    return notes.filter(
+      (note) =>
+        note.title.toLowerCase().includes(searchText.toLowerCase()) ||
+        note.content.toLowerCase().includes(searchText.toLowerCase())
+    );
+  }
+
+  static sortByDate(notes: INote[]): INote[] {
+    return notes.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+
+  static sortByStatus(notes: INote[]): INote[] {
+    return notes.sort((a, b) => Number(a.isCompleted) - Number(b.isCompleted));
+  }
+}
+
+class ToDoList implements IToDoList {
+  notes: Note[];
+  nextId: number;
+  renderer: ToDoListRenderer;
+
+  constructor(renderer: ToDoListRenderer) {
+    this.notes = [];
+    this.nextId = 1;
+    this.renderer = renderer;
+    this.render();
+  }
+
+  render(): void {
+    this.renderer.clear();
+    this.renderer.addFormForAddingNotes(this.addNoteToList.bind(this));
+    this.renderer.addSearchInput(this.searchNotes.bind(this));
+    this.renderer.addFilteringAndSortingButtons(
+      this.render.bind(this),
+      this.sortByDate.bind(this),
+      this.sortByStatus.bind(this)
+    );
+    this.renderer.addListWithNotes(
+      this.notes,
+      this.removeNoteById.bind(this),
+      this.editNoteById.bind(this),
+      this.toggleNoteCompletion.bind(this)
+    );
+    this.showStatistics();
+  }
+
+  addNoteToList(title: string, content: string): void {
+    const newNote = new Note(this.nextId++, title, content);
+    this.notes.push(newNote);
+    this.render();
   }
 
   removeNoteById(id: number): void {
@@ -164,20 +244,17 @@ class ToDoList {
     );
     if (!confirmEditInitiation) return;
 
-    const currentTitle = note.title;
-    const currentContent = note.content;
+    const newTitle = prompt("Edit title:", note.title);
+    const newContent = prompt("Edit content:", note.content);
 
-    const title = prompt("Edit title:", currentTitle);
-    const content = prompt("Edit content:", currentContent);
-
-    if (title !== null && content !== null) {
+    if (newTitle !== null && newContent !== null) {
       const confirmChanges = confirm(
-        `Confirm changes?\nTitle: ${title}\nContent: ${content}`
+        `Are you sure you want to save the changes?\nTitle: ${newTitle}\nContent: ${newContent}`
       );
 
       if (confirmChanges) {
-        note.title = title || currentTitle;
-        note.content = content || currentContent;
+        note.title = newTitle;
+        note.content = newContent;
         note.updatedAt = new Date();
         this.render();
       }
@@ -192,51 +269,46 @@ class ToDoList {
     }
   }
 
-  addFilteringAndSortingButtons(): void {
-    const filterButton = document.createElement("button");
-    const sortByDateButton = document.createElement("button");
-    const sortByStatusButton = document.createElement("button");
-
-    filterButton.innerText = "Show All Notes";
-    sortByDateButton.innerText = "Sort Notes by Creation Date";
-    sortByStatusButton.innerText = "Sort Notes by Status";
-
-    filterButton.addEventListener("click", () => this.render());
-
-    sortByDateButton.addEventListener("click", () => {
-      this.notes.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-      this.render();
-    });
-
-    sortByStatusButton.addEventListener("click", () => {
-      this.notes.sort((a, b) => Number(a.isCompleted) - Number(b.isCompleted));
-      this.render();
-    });
-
-    this.selectedHtmlElement.appendChild(filterButton);
-    this.selectedHtmlElement.appendChild(sortByDateButton);
-    this.selectedHtmlElement.appendChild(sortByStatusButton);
-  }
-
-  renderFilteredNotes(foundNotes: Note[]): void {
-    this.selectedHtmlElement.innerHTML = "";
-    this.addPromptFormForAddingNotes();
-    this.addSearchInput();
-    this.addFilteringAndSortingButtons();
-    this.addListWithNotes(foundNotes);
+  searchNotes(searchText: string): void {
+    const filteredNotes = NoteFilterAndSorter.filterNotes(
+      this.notes,
+      searchText
+    );
+    this.renderer.clear();
+    this.renderer.addFormForAddingNotes(this.addNoteToList.bind(this));
+    this.renderer.addSearchInput(this.searchNotes.bind(this));
+    this.renderer.addFilteringAndSortingButtons(
+      this.render.bind(this),
+      this.sortByDate.bind(this),
+      this.sortByStatus.bind(this)
+    );
+    this.renderer.addListWithNotes(
+      filteredNotes,
+      this.removeNoteById.bind(this),
+      this.editNoteById.bind(this),
+      this.toggleNoteCompletion.bind(this)
+    );
     this.showStatistics();
   }
 
+  sortByDate(): void {
+    NoteFilterAndSorter.sortByDate(this.notes);
+    this.render();
+  }
+
+  sortByStatus(): void {
+    NoteFilterAndSorter.sortByStatus(this.notes);
+    this.render();
+  }
+
   showStatistics(): void {
-    const stats = document.createElement("div");
     const totalNotes = this.notes.length;
     const remainingNotes = this.notes.filter(
       (note) => !note.isCompleted
     ).length;
-
-    stats.innerText = `Total Tasks: ${totalNotes}, In Process: ${remainingNotes}`;
-    this.selectedHtmlElement.appendChild(stats);
+    this.renderer.showStatistics(totalNotes, remainingNotes);
   }
 }
 
-const todo = new ToDoList();
+const renderer = new ToDoListRenderer(document.getElementById("app")!);
+const toDoList = new ToDoList(renderer);
